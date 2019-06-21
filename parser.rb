@@ -19,18 +19,22 @@ def parse_binary(file)
       all_bytes[0 + i], all_bytes[3 + i] = all_bytes[3 + i], all_bytes[0 + i] # because you did big H H* you don't have to reverse the strings at least that's nice hmm
       all_bytes[1 + i], all_bytes[2 + i] = all_bytes[2 + i], all_bytes[1 + i]
     end
-    packet_length = all_bytes[8..11].join("").to_i(16) # omfg now it works just magically perfectly holy fuck god thank god yes lmao
+    packet_length = all_bytes[8..11].join("").to_i(16) # omfg now it works just magically perfectly holy fuck god thank god yes lmao # type the command man pcap-savefile to read about these per-file headers as well as the main pcap file header
     all_pcap_packets << [all_bytes.shift(16), all_bytes.shift(packet_length)] # the per-packet header is 16 bytes + the packet_length to get the whole length of the packet love it
   end
   all_ethernet_frames = Array.new
   all_pcap_packets.each do |packet|
-    all_ethernet_frames << [packet[1][0..5].join(":"), packet[1][6..11].join(":"), packet[1][12..13].join(""), packet[1][14..-1]] # source MAC address, destination MAC address, IP version, packet payload
+    all_ethernet_frames << [packet[1][0..5].join(":"), packet[1][6..11].join(":"), packet[1][12..13].join(""), packet[1][14..-1]] # source MAC address, destination MAC address, IP version, packet payload, https://en.wikipedia.org/wiki/Ethernet_frame#Ethernet_II
   end
   all_ip_datagrams = Array.new
   all_ethernet_frames.each do |frame|
-    all_ip_datagrams << [frame[3][0], frame[3][1], frame[3][2..3].join(""), frame[3][4..5].join(""), frame[3][6..7].join(""), frame[3][8], frame[3][9], frame[3][10..11].join(""), frame[3][12..15].map { |hex| hex.to_i(16) }.join("."), frame[3][16..19].map { |hex| hex.to_i(16) }.join("."), frame[3][20..-1]] # in the array, index 0 is the Version and IHL, 1 is DSCP and ECN, 2 is Total Length, 3 is Identification, 4 is Flags and Fragment Offset, 5 is Time to Live, 6 is Protocol, 7 is Header Checksum, 8 is Source IP Address, 9 is Destination IP Address, and 10 is the actual payload lol
+    all_ip_datagrams << [frame[3][0], frame[3][1], frame[3][2..3].join(""), frame[3][4..5].join(""), frame[3][6..7].join(""), frame[3][8], frame[3][9], frame[3][10..11].join(""), frame[3][12..15].map { |hex| hex.to_i(16) }.join("."), frame[3][16..19].map { |hex| hex.to_i(16) }.join("."), frame[3][20..-1]] # in the array, index 0 is the Version and IHL, 1 is DSCP and ECN, 2 is Total Length, 3 is Identification, 4 is Flags and Fragment Offset, 5 is Time to Live, 6 is Protocol, 7 is Header Checksum, 8 is Source IP Address, 9 is Destination IP Address, and 10 is the actual payload lol https://en.wikipedia.org/wiki/IPv4#Header
   end
-  p all_ip_datagrams
+  all_tcp_segments = Array.new
+  all_ip_datagrams.each do |dg|
+    all_tcp_segments << [dg[10]]
+  end
+  p all_tcp_segments
 end
 
 # steps to doing the per packet parsing
