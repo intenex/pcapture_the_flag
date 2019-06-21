@@ -24,9 +24,13 @@ def parse_binary(file)
   end
   all_ethernet_frames = Array.new
   all_pcap_packets.each do |packet|
-    all_ethernet_frames << [packet[1][0..5].join(":"), packet[1][6..11].join(":"), packet[1][12..13].join(""), packet[1][14..-1]]
+    all_ethernet_frames << [packet[1][0..5].join(":"), packet[1][6..11].join(":"), packet[1][12..13].join(""), packet[1][14..-1]] # source MAC address, destination MAC address, IP version, packet payload
   end
-  p all_ethernet_frames
+  all_ip_datagrams = Array.new
+  all_ethernet_frames.each do |frame|
+    all_ip_datagrams << [frame[3][0], frame[3][1], frame[3][2..3].join(""), frame[3][4..5].join(""), frame[3][6..7].join(""), frame[3][8], frame[3][9], frame[3][10..11].join(""), frame[3][12..15].map { |hex| hex.to_i(16) }.join("."), frame[3][16..19].map { |hex| hex.to_i(16) }.join("."), frame[3][20..-1]] # in the array, index 0 is the Version and IHL, 1 is DSCP and ECN, 2 is Total Length, 3 is Identification, 4 is Flags and Fragment Offset, 5 is Time to Live, 6 is Protocol, 7 is Header Checksum, 8 is Source IP Address, 9 is Destination IP Address, and 10 is the actual payload lol
+  end
+  p all_ip_datagrams
 end
 
 # steps to doing the per packet parsing
