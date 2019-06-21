@@ -1,3 +1,5 @@
+require 'byebug'
+
 def parse_binary(file)
   raw_data = IO.read(file, encoding: "ASCII-8BIT", mode: "rb") # read-only in binary mode https://ruby-doc.org/core-2.5.0/IO.html#method-c-read
   # https://ruby-doc.org/core-2.5.3/String.html#method-i-unpack
@@ -9,13 +11,20 @@ def parse_binary(file)
   all_packets = Array.new
   all_bytes = without_pcap_headers.chars.each_slice(2).map(&:join) # https://stackoverflow.com/questions/12039777/how-to-split-a-string-in-x-equal-pieces-in-ruby
   while all_packets.length < 99 # hardcoded, you know there are 99 packets, let's figure out a better way once you get all the data in the first place
-    packet_length = all_bytes[9].to_i(16) # the 9th byte is what encodes the length of the packet lol as long as the packet isn't too long kind of hacky technically it's 4 total bytes but only the last byte actually has data so far as you can tell def fix later though when you feel less hacky about it
+    # swap the damn headers lmao fuckkkk there obviously is a better way to do this but ah well. Every 4 bytes is one whole thing that needs to be swapped I believe
+    [0, 4, 8, 12].each do |i| # swap each of the 4 4 byte headers how you believe they should be swapped dear god
+      all_bytes[0 + i], all_bytes[3 + i] = all_bytes[3 + i], all_bytes[0 + i] # because you did big H H* you don't have to reverse the strings at least that's nice hmm
+      all_bytes[1 + i], all_bytes[2 + i] = all_bytes[2 + i], all_bytes[1 + i]
+    end
+    packet_length = all_bytes[8..11].join("").to_i(16) # omfg now it works just magically perfectly holy fuck god thank god yes lmao
+    puts packet_length
     all_packets << all_bytes.shift(16 + packet_length).join # the per-packet header is 16 bytes + the packet_length to get the whole length of the packet love it
   end
   # without_first_header = without_pcap_headers[32..-1]
   # without_first_packet = without_first_header[156..-1] # fucking perfect it worked omg wow. So yeah you need to find the first 16 digits and remove them, read the next 2 digits, then keep parsing and splitting the file like that let's do it and then sleep
   # puts without_first_header[0..63]
   p all_packets
+  p all_packets.length
   # p all_bytes
 end
 
