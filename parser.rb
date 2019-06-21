@@ -10,12 +10,13 @@ def parse_binary(file)
   all_bytes = without_pcap_headers.chars.each_slice(2).map(&:join) # https://stackoverflow.com/questions/12039777/how-to-split-a-string-in-x-equal-pieces-in-ruby
   while all_packets.length < 99 # hardcoded, you know there are 99 packets, let's figure out a better way once you get all the data in the first place
     packet_length = all_bytes[9].to_i(16) # the 9th byte is what encodes the length of the packet lol as long as the packet isn't too long kind of hacky technically it's 4 total bytes but only the last byte actually has data so far as you can tell def fix later though when you feel less hacky about it
-    all_packets << all_bytes.shift(16 + packet_length) # the per-packet header is 16 bytes + the packet_length to get the whole length of the packet love it
+    all_packets << all_bytes.shift(16 + packet_length).join # the per-packet header is 16 bytes + the packet_length to get the whole length of the packet love it
   end
-  without_first_packet = without_first_header[156..-1] # fucking perfect it worked omg wow. So yeah you need to find the first 16 digits and remove them, read the next 2 digits, then keep parsing and splitting the file like that let's do it and then sleep
+  # without_first_header = without_pcap_headers[32..-1]
+  # without_first_packet = without_first_header[156..-1] # fucking perfect it worked omg wow. So yeah you need to find the first 16 digits and remove them, read the next 2 digits, then keep parsing and splitting the file like that let's do it and then sleep
   # puts without_first_header[0..63]
   p all_packets
-  p all_bytes
+  # p all_bytes
 end
 
 # steps to doing the per packet parsing
