@@ -18,7 +18,7 @@ def parse_binary(file)
     end
     packet_length = all_bytes[8..11].join("").to_i(16) # omfg now it works just magically perfectly holy fuck god thank god yes lmao
     puts packet_length
-    all_packets << all_bytes.shift(16 + packet_length).join # the per-packet header is 16 bytes + the packet_length to get the whole length of the packet love it
+    all_packets << [all_bytes.shift(16).join, all_bytes.shift(packet_length).join] # the per-packet header is 16 bytes + the packet_length to get the whole length of the packet love it
   end
   # without_first_header = without_pcap_headers[32..-1]
   # without_first_packet = without_first_header[156..-1] # fucking perfect it worked omg wow. So yeah you need to find the first 16 digits and remove them, read the next 2 digits, then keep parsing and splitting the file like that let's do it and then sleep
