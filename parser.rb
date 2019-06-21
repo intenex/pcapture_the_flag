@@ -31,10 +31,11 @@ def parse_binary(file)
     all_ip_datagrams << [frame[3][0], frame[3][1], frame[3][2..3].join, frame[3][4..5].join, frame[3][6..7].join, frame[3][8], frame[3][9], frame[3][10..11].join, frame[3][12..15].map { |hex| hex.to_i(16) }.join("."), frame[3][16..19].map { |hex| hex.to_i(16) }.join("."), frame[3][20..-1]] # in the array, index 0 is the Version and IHL, 1 is DSCP and ECN, 2 is Total Length, 3 is Identification, 4 is Flags and Fragment Offset, 5 is Time to Live, 6 is Protocol, 7 is Header Checksum, 8 is Source IP Address, 9 is Destination IP Address, and 10 is the actual payload lol https://en.wikipedia.org/wiki/IPv4#Header
   end
   all_tcp_segments = Array.new
-  # all_ip_datagrams.each do |dg|
-  #   all_tcp_segments << [dg[10][0..1].join.to_i(16), dg[10][1..2].join.to_i()
-  # end
-  p all_ip_datagrams
+  all_ip_datagrams.each do |dg|
+    tcp_header_size = (dg[10][12][0].to_i(16) * 32) / 8 # the fucking TCP header is specified in 4 bits as a fucking 32 bit word (with 4 bits naturally the maximum number of words is 15) which gives teh minimum byte size of 20 bytes with 5 words and maximum byte size of 60 bytes so up to 40 bytes of options in the header to get this multiply the words by 32 to get the total bits and then divide by 8 to get the bytes lmao
+    all_tcp_segments << [dg[10][0..1].join.to_i(16), dg[10][2..3].join.to_i(16), dg[10][4..7].join, dg[10][8..11].join, dg[10][12][0], dg[10][13], dg[10][14..15].join.to_i(16), dg[10][16..17].join, dg[10][18..19].join, dg[10][tcp_header_size..-1]] # index 0 is source port, 1 is destination port, 2 is sequence number, 3 is acknowledgement number, 4 is the data offset (size of the TCP header in 32 bit words lol), 5 are some flags, 6 is the window size, 7 is the checksum, 8 is the urgent pointer, and 9 is the actual data lol https://en.wikipedia.org/wiki/Transmission_Control_Protocol#TCP_segment_structure
+  end
+  p all_tcp_segments
 end
 
 # steps to doing the per packet parsing
