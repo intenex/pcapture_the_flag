@@ -1,5 +1,3 @@
-require 'byebug'
-
 def parse_binary(file)
   raw_data = IO.read(file, encoding: "ASCII-8BIT", mode: "rb") # read-only in binary mode https://ruby-doc.org/core-2.5.0/IO.html#method-c-read
   # https://ruby-doc.org/core-2.5.3/String.html#method-i-unpack
@@ -53,12 +51,14 @@ def parse_binary(file)
   # http_response_with_headers_bin = http_response_with_headers_hex.scan(/../).map { |x| x.hex.chr }.join # this does get you the headers nicely since those are correct text and you're getting that text now so you can confirm the headers are correct thank god this converts your hex into correct ASCII characters incorrect for what you want to do, but where you got the idea for thet scan with the awesome regex in it: https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
   http_response_with_headers_bin = http_response_with_headers_hex.scan(/../).map { |two_hex| two_hex.to_i(16).to_s(2).rjust(two_hex.size*4, '0') }.join # the two_hex.size*4 just adjusts the size to be 4 digits long for each digit of hex since each digit of hex equals 4 digits of binary bits love it from https://stackoverflow.com/a/5981788/674794 two_hex_val.to_i(16).to_s(2).rjust(two_hex_val.size*4, '0') --> doing .to_s on integer will convert that integer to radix base 2 amazing and .to_i(16) will give the integer representation of that hex value amazing knowing that it's base/radix 16 amazing
   http_response_with_headers_text = http_response_with_headers_bin.scan(/......../).map { |eight_bit| eight_bit.to_i(2).chr }.join # fucking killed it figured that out entirely on your own
-  puts http_response_with_headers_text[0..356]
-  p http_response_with_headers_text[350..361] # the carriage return is the first \r\n\r\n fuck yes
+  p http_response_with_headers_text[0..357] # the entire header
+  p http_response_with_headers_text.inspect.index('\r\n\r\n') # use single quotes not double quotes, very strange that this returns 385 when it should actually be 358 hmm inspect returns the correct representation where \r\n\r\n would be found in so great
+  p http_response_with_headers_text.inspect[0..398] # fucking insane the inspect adds two slashes to ESCAPE the escape characters LOL god damn hence why it's longer it no good way to do it like that you should just do it in binary man
+  p http_response_with_headers_text[358..361] # the carriage return is the first \r\n\r\n fuck yes
   http_response_body_hex = http_response_with_headers_text[362..-1]
   # http_response_body_bin = http_response_body_hex.each_byte.map { |chr| chr.to_s(16).to_i(16).to_s(2).rjust(4, '0') }.join # this should be the full thing then okay good luck let's do it --> amazing the fucking each byte thing from https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
   # p http_response_body_bin # --> all the hex of the actual data is here
-  IO.write("output", http_response_body_hex) #
+  IO.write("output", http_response_body_hex) # so the output you've written here is actually just the byte stream, the .chr turns it into a byte stream, amazing
 end
 
 # remaining steps to parse the TCP segments into a coherent HTTP response to parse into the image
