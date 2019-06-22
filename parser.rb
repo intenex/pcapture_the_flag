@@ -15,6 +15,7 @@ def parse_binary(file)
   all_bytes = without_pcap_headers.chars.each_slice(2).map(&:join) # https://stackoverflow.com/questions/12039777/how-to-split-a-string-in-x-equal-pieces-in-ruby
   while all_bytes.length > 0 # amazing this actually does get exactly 99 packets and works perfectly
     # swap the damn headers lmao fuckkkk there obviously is a better way to do this but ah well. Every 4 bytes is one whole thing that needs to be swapped I believe
+    # this is a manual little endian to big endian swap --> these were converted incorrectly as they were little endian but you specified them as big endian
     [0, 4, 8, 12].each do |i| # swap each of the 4 4 byte headers how you believe they should be swapped dear god
       all_bytes[0 + i], all_bytes[3 + i] = all_bytes[3 + i], all_bytes[0 + i] # because you did big H H* you don't have to reverse the strings at least that's nice hmm
       all_bytes[1 + i], all_bytes[2 + i] = all_bytes[2 + i], all_bytes[1 + i]
@@ -33,9 +34,31 @@ def parse_binary(file)
   all_tcp_segments = Array.new
   all_ip_datagrams.each do |dg|
     tcp_header_size = (dg[10][12][0].to_i(16) * 32) / 8 # the fucking TCP header is specified in 4 bits as a fucking 32 bit word (with 4 bits naturally the maximum number of words is 15) which gives teh minimum byte size of 20 bytes with 5 words and maximum byte size of 60 bytes so up to 40 bytes of options in the header to get this multiply the words by 32 to get the total bits and then divide by 8 to get the bytes lmao
-    all_tcp_segments << [dg[10][0..1].join.to_i(16), dg[10][2..3].join.to_i(16), dg[10][4..7].join, dg[10][8..11].join, dg[10][12][0], dg[10][13], dg[10][14..15].join.to_i(16), dg[10][16..17].join, dg[10][18..19].join, dg[10][tcp_header_size..-1]] # index 0 is source port, 1 is destination port, 2 is sequence number, 3 is acknowledgement number, 4 is the data offset (size of the TCP header in 32 bit words lol), 5 are some flags, 6 is the window size, 7 is the checksum, 8 is the urgent pointer, and 9 is the actual data lol https://en.wikipedia.org/wiki/Transmission_Control_Protocol#TCP_segment_structure
+    all_tcp_segments << [dg[10][0..1].join.to_i(16), dg[10][2..3].join.to_i(16), dg[10][4..7].join.to_i(16), dg[10][8..11].join, dg[10][12][0], dg[10][13], dg[10][14..15].join.to_i(16), dg[10][16..17].join, dg[10][18..19].join, dg[10][tcp_header_size..-1]] # index 0 is source port, 1 is destination port, 2 is sequence number, 3 is acknowledgement number, 4 is the data offset (size of the TCP header in 32 bit words lol), 5 are some flags, 6 is the window size, 7 is the checksum, 8 is the urgent pointer, and 9 is the actual data lol https://en.wikipedia.org/wiki/Transmission_Control_Protocol#TCP_segment_structure
   end
-  p all_tcp_segments
+  all_received_tcp_segments = Array.new # as a hack everything from source port 80 going to destination port 59295
+  all_tcp_segments.each do |seg|
+    if seg[0] == 80 # then it must be sent from the HTTP server to us
+      all_received_tcp_segments << seg
+    end
+  end
+  all_received_tcp_segments.sort_by! { |seg| seg[2] } # right wireshark shows relative sequence numbers so this is actually okay whew
+  # amazing this works perfectly to sort now just reject duplicates
+  # puts all_received_tcp_segments.length # 55 received packets love it
+  all_received_tcp_segments.uniq! { |seg| seg[2] } # reject all duplicate sequence numbers
+  # puts all_received_tcp_segments.length # only 42 packets now so fucking great
+  # now let's just combine the payloads together and then parse the HTTP data and you're good fuck yeah
+  # p all_received_tcp_segments
+  http_response_with_headers_hex = all_received_tcp_segments.map { |seg| seg[9] }.join
+  # http_response_with_headers_bin = http_response_with_headers_hex.scan(/../).map { |x| x.hex.chr }.join # this does get you the headers nicely since those are correct text and you're getting that text now so you can confirm the headers are correct thank god this converts your hex into correct ASCII characters incorrect for what you want to do, but where you got the idea for thet scan with the awesome regex in it: https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
+  http_response_with_headers_bin = http_response_with_headers_hex.scan(/../).map { |two_hex| two_hex.to_i(16).to_s(2).rjust(two_hex.size*4, '0') }.join # the two_hex.size*4 just adjusts the size to be 4 digits long for each digit of hex since each digit of hex equals 4 digits of binary bits love it from https://stackoverflow.com/a/5981788/674794 two_hex_val.to_i(16).to_s(2).rjust(two_hex_val.size*4, '0') --> doing .to_s on integer will convert that integer to radix base 2 amazing and .to_i(16) will give the integer representation of that hex value amazing knowing that it's base/radix 16 amazing
+  http_response_with_headers_text = http_response_with_headers_bin.scan(/......../).map { |eight_bit| eight_bit.to_i(2).chr }.join # fucking killed it figured that out entirely on your own
+  puts http_response_with_headers_text[0..356]
+  p http_response_with_headers_text[350..361] # the carriage return is the first \r\n\r\n fuck yes
+  http_response_body_hex = http_response_with_headers_text[362..-1]
+  # http_response_body_bin = http_response_body_hex.each_byte.map { |chr| chr.to_s(16).to_i(16).to_s(2).rjust(4, '0') }.join # this should be the full thing then okay good luck let's do it --> amazing the fucking each byte thing from https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
+  # p http_response_body_bin # --> all the hex of the actual data is here
+  IO.write("output", http_response_body_hex) #
 end
 
 # remaining steps to parse the TCP segments into a coherent HTTP response to parse into the image
