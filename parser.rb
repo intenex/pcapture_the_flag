@@ -39,11 +39,14 @@ def parse_binary(file)
 end
 
 # remaining steps to parse the TCP segments into a coherent HTTP response to parse into the image
-# 1. Get all the responses only, so sort by the correct source and destination addresses as is correct
+# 1. Get all the responses only, so sort by the correct source and destination addresses as is correct (everything from source 192.30.252.154 to 192.168.0.101 I believe, we are 192.168.0.101 ofc)
 # 2. Sort all those responses by the TCP sequence number
 # 3. Combine all the payload data from those sorted packets together
 # 4. extract the HTTP header, decode it as plain text, read it
 # 5. extract the HTTP body, write it to disk as a file with a .jpg extension, and open it
+
+# careful notes: the 1490 byte length packets, plus one 452 and one 68 byte length packet at the end, should be all the packets that comprise the actual message
+# Make sure to figure out whether or not to include retransmissions - retransmissions that come through are identical right and any of them are good?
 
 # steps to doing the per packet parsing
 # 1. Find the current packet's length read
