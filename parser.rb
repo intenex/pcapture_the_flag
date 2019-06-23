@@ -81,8 +81,17 @@ end
 # 1. Do this all in binary
 
 def parse_binary(file)
-  # IO.new(file)
-  raw_data = IO.read(file, encoding: "ASCII-8BIT", mode: "rb") # instead of a read practice streaming
+  input = File.new(file, 'r') # https://ruby-doc.org/core-2.6.3/File.html#method-c-new Right use File.new, not IO.new makes perf sense
+  pcap_header = input.read(24) # save everything into a hash now love it instead of a read practice streaming --> defined on the IO class, can just specify a length to read in bytes, brilliant, exactly what you want lol https://ruby-doc.org/core-2.6.3/IO.html#method-i-read
+  pcap_packets = Array.new # an array of hashes of packets
+  curr_pcap_file_header = input.read(16) # preserves the binary data love it saving it like this
+  # while curr_pcap_file_header # input.read(16) will return nil specifically because it has a length specified amazing to do this actually right, so this will be true as long as there are still headers to read love it
+    current_packet = Hash.new
+    current_packet['header'] = curr_pcap_file_header
+    packet_length = curr_pcap_file_header[8..11]
+    p packet_length
+  # end
+
 end
 
 parse_binary('net.cap')
