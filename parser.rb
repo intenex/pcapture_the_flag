@@ -81,7 +81,8 @@ end
 # 1. Do this all in binary
 
 def parse_binary(file)
-  
+  # IO.new(file)
+  raw_data = IO.read(file, encoding: "ASCII-8BIT", mode: "rb") # instead of a read practice streaming
 end
 
 parse_binary('net.cap')
