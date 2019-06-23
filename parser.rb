@@ -1,4 +1,4 @@
-def parse_binary(file)
+def parse_binary_bad(file)
   raw_data = IO.read(file, encoding: "ASCII-8BIT", mode: "rb") # read-only in binary mode https://ruby-doc.org/core-2.5.0/IO.html#method-c-read
   # https://ruby-doc.org/core-2.5.3/String.html#method-i-unpack
   hex_data = raw_data.unpack('H*') # an asterisk keeps going lol --> this did indeed unpack it amazing. H is the right one, h for hexadecimal lsb, b for binary lsb
@@ -77,7 +77,11 @@ end
 # 3. Slice out the entire packet's header + length into all_packets
 # 4. Find the next packet's length read, do the same thing, so a while loop love it
 
-parse_binary('net.cap')
-
 # next steps to refactor:
 # 1. Do this all in binary
+
+def parse_binary(file)
+  
+end
+
+parse_binary('net.cap')
