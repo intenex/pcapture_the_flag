@@ -88,12 +88,17 @@ def parse_binary(file)
   while curr_pcap_file_header # input.read(16) will return nil specifically because it has a length specified amazing to do this actually right, so this will be true as long as there are still headers to read love it
     current_packet = { "header" => curr_pcap_file_header }
     packet_length = curr_pcap_file_header[8..11].unpack('V')[0] # the packet length is stored here in these 4 bytes https://ruby-doc.org/core-2.6.3/String.html#method-i-unpack v is a 32 bit unsigned integer which this is lol 4 bytes love it
-    p packet_length # totally amazing this totally does read all the integers correctly in little endian yeah if you specify little endian for something that is little endian it'll read it correctly and for big endian it'll do it correctly fucking love it man Ruby et al such high level amazing languages lol
     current_packet["payload"] = input.read(packet_length) # this streaming way of reading the file is really perfect man
     pcap_packets << current_packet
     curr_pcap_file_header = input.read(16) # omfg works perfectly...could possibly do this with a do-while loop instead but don't think that works actually would have an empty packet at the end possibly could also just use a break statement in here
   end
-  p pcap_packets.length
+  ethernet_frames = Array.new
+  pcap_packets.each do |packet|
+    frame = Hash.new
+    frame['dest'] = packet['payload'][0..5].each_byte.map { |b| b.to_s(16).upcase }.join(":") # take each byte in the string, turn it to hex, and join it with the : to make it a MAC address as per https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
+    frame['source'] = packet['payload'][6..11].each_byte.map { |b| b.to_s(16).upcase }.join(":")
+
+  end
 end
 
 parse_binary('net.cap')
