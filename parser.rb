@@ -116,6 +116,8 @@ def parse_binary(file)
   tcp_segments = Array.new
   ip_datagrams.each do |datagram|
     payload = datagram['payload']
+    segment = Hash.new
+    
   end
 end
 
