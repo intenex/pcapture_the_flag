@@ -96,8 +96,8 @@ def parse_binary(file)
   pcap_packets.each do |packet|
     payload = packet['payload']
     frame = Hash.new
-    frame['dest'] = payload[0..5].each_byte.map { |b| b.to_s(16).upcase }.join(":") # take each byte in the string, turn it to hex, and join it with the : to make it a MAC address as per https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
-    frame['source'] = payload[6..11].each_byte.map { |b| b.to_s(16).upcase }.join(":")
+    frame['dest_mac'] = payload[0..5].each_byte.map { |b| b.to_s(16).upcase }.join(":") # take each byte in the string, turn it to hex, and join it with the : to make it a MAC address as per https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
+    frame['source_mac'] = payload[6..11].each_byte.map { |b| b.to_s(16).upcase }.join(":")
     frame['ethertype'] = payload[12..13].unpack('H4')[0] # big endian HSB (big nibble first) two bytes
     frame['payload'] = payload[14..-1]
     ethernet_frames << frame
@@ -106,10 +106,10 @@ def parse_binary(file)
   ethernet_frames.each do |frame|
     payload = frame['payload']
     datagram = Hash.new
-    datagram['length'] = payload[2..3].unpack('n')[0] # n is a 16 bit unsigned big endian integer, as per network data, which this literally is beautiful so that's what it's predominantly used for lol
+    datagram['length'] = payload[2..3].unpack('n')[0] # n is a 16 bit unsigned big endian integer, as per network data, which this literally is so that's what it's predominantly used for lol
     datagram['protocol'] = payload[9].unpack('C')[0]
-    datagram['source'] = payload[12..15].each_byte.map { |b| b.to_s(10) }.join(".")
-    datagram['dest'] = payload[16..19].each_byte.map { |b| b.to_s(10) }.join(".")
+    datagram['source_ip'] = payload[12..15].each_byte.map { |b| b.to_s(10) }.join(".")
+    datagram['dest_ip'] = payload[16..19].each_byte.map { |b| b.to_s(10) }.join(".")
     datagram['payload'] = payload[20..-1]
     ip_datagrams << datagram
   end
@@ -117,8 +117,16 @@ def parse_binary(file)
   ip_datagrams.each do |datagram|
     payload = datagram['payload']
     segment = Hash.new
-    
+    segment['source_port'] = payload[0..1].unpack('n')[0]
+    segment['dest_port'] = payload[2..3].unpack('n')[0]
+    segment['seq_num'] = payload[4..7].unpack('N')[0] # 32 bit big endian unsigned integer for network transmissions literally for this purpose amazing lol
+    segment['ack_num'] = payload[8..11].unpack('N')[0]
+    segment['header_length'] = payload[12].unpack('H')[0].to_i(16) * 4 # times 4 because each of these 'words' is 32 bits long and you divide that by 8 to get bits so 32/8 == 4 so just multiply by 4 # integers are base 10 always right so hence why it's interpreting things in the base you pass and translating them into base 10 https://ruby-doc.org/core-2.6.1/String.html#method-i-to_i # right the beauty is to get just 4 bits with hex you can just specify one H without doing H2 which would get the whole 8 bits of the byte since one digit of hex is 4 bits so this is the first 4 bits of the 13th byte of the header which is where the TCP header length/data offset data is stored in terms of 32 bit words lmao
+    segment['win_size'] = payload[14..15].unpack('n')[0] # window size: The size of the receive window, which specifies the number of window size units (by default, bytes) (beyond the segment identified by the sequence number in the acknowledgment field) that the sender of this segment is currently willing to receive
+    segment['checksum'] = payload[16..17].unpack('n')[0]
+    segment['payload'] = payload[segment['header_length']..-1]
   end
+  
 end
 
 parse_binary('net.cap')
