@@ -97,8 +97,11 @@ def parse_binary(file)
     frame = Hash.new
     frame['dest'] = packet['payload'][0..5].each_byte.map { |b| b.to_s(16).upcase }.join(":") # take each byte in the string, turn it to hex, and join it with the : to make it a MAC address as per https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
     frame['source'] = packet['payload'][6..11].each_byte.map { |b| b.to_s(16).upcase }.join(":")
-
+    frame['ethertype'] = packet['payload'][12..13].unpack('H4')[0] # big endian HSB (big nibble first) two bytes
+    frame['payload'] = packet['payload'][14..-1]
+    ethernet_frames << frame
   end
+  
 end
 
 parse_binary('net.cap')
