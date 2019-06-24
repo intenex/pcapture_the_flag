@@ -94,13 +94,26 @@ def parse_binary(file)
   end
   ethernet_frames = Array.new
   pcap_packets.each do |packet|
+    payload = packet['payload']
     frame = Hash.new
-    frame['dest'] = packet['payload'][0..5].each_byte.map { |b| b.to_s(16).upcase }.join(":") # take each byte in the string, turn it to hex, and join it with the : to make it a MAC address as per https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
-    frame['source'] = packet['payload'][6..11].each_byte.map { |b| b.to_s(16).upcase }.join(":")
-    frame['ethertype'] = packet['payload'][12..13].unpack('H4')[0] # big endian HSB (big nibble first) two bytes
-    frame['payload'] = packet['payload'][14..-1]
+    frame['dest'] = payload[0..5].each_byte.map { |b| b.to_s(16).upcase }.join(":") # take each byte in the string, turn it to hex, and join it with the : to make it a MAC address as per https://anthonylewis.com/2011/02/09/to-hex-and-back-with-ruby/
+    frame['source'] = payload[6..11].each_byte.map { |b| b.to_s(16).upcase }.join(":")
+    frame['ethertype'] = payload[12..13].unpack('H4')[0] # big endian HSB (big nibble first) two bytes
+    frame['payload'] = payload[14..-1]
     ethernet_frames << frame
   end
+  ip_datagrams = Array.new
+  ethernet_frames.each do |frame|
+    payload = frame['payload']
+    datagram = Hash.new
+    datagram['length'] = payload[2..3].unpack('n')[0] # n is a 16 bit unsigned big endian integer, as per network data, which this literally is beautiful so that's what it's predominantly used for lol
+    datagram['protocol'] = payload[9].unpack('C')[0]
+    datagram['source'] = payload[12..15].each_byte.map { |b| b.to_s(10) }.join(".")
+    datagram['dest'] = payload[16..19].each_byte.map { |b| b.to_s(10) }.join(".")
+    datagram['payload'] = payload[20..-1]
+    ip_datagrams << datagram
+  end
+  tcp_segments = Array.new
   
 end
 
