@@ -114,7 +114,9 @@ def parse_binary(file)
     ip_datagrams << datagram
   end
   tcp_segments = Array.new
-  
+  ip_datagrams.each do |datagram|
+    payload = datagram['payload']
+  end
 end
 
 parse_binary('net.cap')
