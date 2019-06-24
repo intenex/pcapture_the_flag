@@ -92,6 +92,7 @@ def parse_binary(file)
     pcap_packets << current_packet
     curr_pcap_file_header = input.read(16) # omfg works perfectly...could possibly do this with a do-while loop instead but don't think that works actually would have an empty packet at the end possibly could also just use a break statement in here
   end
+  input.close # must close the file! lol https://stackoverflow.com/a/4795782/674794
   ethernet_frames = Array.new
   pcap_packets.each do |packet|
     payload = packet['payload']
@@ -125,8 +126,15 @@ def parse_binary(file)
     segment['win_size'] = payload[14..15].unpack('n')[0] # window size: The size of the receive window, which specifies the number of window size units (by default, bytes) (beyond the segment identified by the sequence number in the acknowledgment field) that the sender of this segment is currently willing to receive
     segment['checksum'] = payload[16..17].unpack('n')[0]
     segment['payload'] = payload[segment['header_length']..-1]
+    tcp_segments << segment
   end
-  
+  received_tcp_segments = tcp_segments.select { |seg| seg['source_port'] == 80 } # only keep the segments that have a source port of 80, meaning they were sent from an HTTP server to us
+  received_tcp_segments.sort_by! { |seg| seg['seq_num'] }
+  received_tcp_segments.uniq! { |seg| seg['seq_num'] } # strip the duplicate packets with the same starting sequence number --> these are TCP retransmissions that were sent multiple times because an ACKnowledgement of receipt of a packet that was successfully sent was dropped on the way back to the server so the server never received ACK that the packet was received and so resent it again so strip all these duplicates
+  http_response = received_tcp_segments.map { |seg| seg['payload'] }.join
+  http_header = http_response[0..361] # TODO: figure out a way to programmatically find the \r\n\r\n dynamically instead of hard coding it to make this more dynamic code for sure to be reusable in the future for parsing anything like this
+  http_body = http_response[362..-3] # remember the last two bytes are probably nto necessary, learn what they're for and try omitting. Omitting here so the byte size of the JPG is exactly 55,562 as specified in the HTTP Header as the content-length love it
+  IO.write("result.jpg", http_body)
 end
 
 parse_binary('net.cap')
